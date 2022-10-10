@@ -1,0 +1,22 @@
+{
+    "credentials": {
+        "tenantName": "nfpoc.onmicrosoft.com",
+        "clientID": "db9bf22e-31cb-4097-8cc0-172056136b65",
+        "audience": "db9bf22e-31cb-4097-8cc0-172056136b65"
+    },
+    "policies": {
+        "policyName": "B2C_1A_SUSI_DISCORD"
+    },
+    "metadata": {
+        "b2cDomain": "nfpoc.b2clogin.com",
+        "authority": "login.microsoftonline.com",
+        "discovery": ".well-known/openid-configuration",
+        "version": "v2.0"
+    },
+    "settings": {
+        "isB2C": true,
+        "validateIssuer": false,
+        "passReqToCallback": false,
+        "loggingLevel": "info"
+    }
+}

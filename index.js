@@ -1,9 +1,10 @@
 require('dotenv').config();
 const express = require('express');
 const passport = require('passport');
-const config = require('./config.json');
+const config = require('./config/authn_config.json');
 const BearerStrategy = require('passport-azure-ad').BearerStrategy;
 const msal = require('@azure/msal-node');
+var fetch = require( 'node-fetch' );
 
 // Todo change scopes
 const EXPOSED_SCOPES = [ "demo.read" ]
@@ -63,6 +64,9 @@ app.get('/api',
 app.get('/api/createPresentationRequest',
     passport.authenticate('oauth-bearer', {session: false}),
     async (req, res) => {
+        // id = req.session.id;
+        var id = "hogehoge";
+        // get access_token to access Entra Verified ID's Client API
         var accessToken = "";
         try {
             const result = await cca.acquireTokenByClientCredential(msalClientCredentialRequest);
@@ -77,9 +81,46 @@ app.get('/api/createPresentationRequest',
             return; 
         }
         // call Entra Verified ID API to create presentation request
-        res.status(200).json({
-            'access_token': accessToken
-        });
+        // Load presentation template
+        var requestConfigFile = process.env.presentation_requestTemplate;
+        var presentationConfig = require( requestConfigFile );
+        // authority
+        presentationConfig.authority = process.env.verifier_authority;
+        // registration
+        presentationConfig.registration.clientName = process.env.presentation_registration_clientName;
+        // callback
+        presentationConfig.callback.url = process.env.baseURL + '/api/verifier/presentation-request-callback';
+        presentationConfig.callback.state = id;
+        if ( presentationConfig.callback.headers ) {
+            presentationConfig.callback.headers['api-key'] = process.env.presentation_request_callbackAPIKey;
+        }
+        // requestedCredentials
+        presentationConfig.requestedCredentials[0].type = process.env.presentation_request_type;
+        presentationConfig.requestedCredentials[0].purpose = process.env.presentation_request_purpose;
+        presentationConfig.requestedCredentials[0].acceptedIssuers[0] = process.env.presentation_request_acceptedIssuers;
+
+        console.log( 'Invoke VC Presentation Request API' );
+        var payload = JSON.stringify(presentationConfig);
+        console.log( payload );
+        const fetchOptions = {
+            method: 'POST',
+            body: payload,
+            headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': payload.length.toString(),
+            'Authorization': `Bearer ${accessToken}`
+            }
+        };
+
+        var client_api_request_endpoint = 'https://verifiedid.did.msidentity.com/v1.0/verifiableCredentials/createPresentationRequest';
+        const response = await fetch(client_api_request_endpoint, fetchOptions);
+        var resp = await response.json()
+
+        resp.id = id;
+        console.log( 'VC Client API Response' );
+        console.log( resp );  
+        res.status(200).json(resp);
+
     }
 )
 
